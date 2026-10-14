@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ghi Chú & Chat P2P Ngoại Tuyến</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        },
+                        indigo: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+        /* Touch target optimizations for mobile */
+        .touch-btn {
+            min-height: 44px;
+            min-width: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox-img {
+            user-select: none;
+            -webkit-user-drag: none;
+            cursor: grab;
+        }
+        .lightbox-img:active { cursor: grabbing; }
+
+        /* Responsive Mobile Master-Detail view transitions */
+        .mobile-pane-hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 767px) {
+            .mobile-pane-detail-active #notesListPane {
+                display: none !important;
+            }
+            .mobile-pane-detail-active #noteDetailPane {
+                display: flex !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 text-xs sm:text-sm font-medium">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-message">Thành công!</span>
+    </div>
+
+    <!-- Header Navigation Bar -->
+    <header class="sticky top-0 z-30 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Logo & Brand -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                    <i class="fa-solid fa-wifi-slash text-base sm:text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm sm:text-base leading-tight tracking-tight">Offline Hub</h1>
+                    <p class="hidden sm:block text-[11px] text-slate-500 dark:text-slate-400">Ghi chú & Chat P2P Không Internet</p>
+                </div>
+            </div>
+
+            <!-- Tab Switcher Navigation -->
+            <nav class="flex items-center bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl text-xs font-semibold">
+                <button id="navBtnNotes" onclick="switchMainTab('notes')" class="touch-btn px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm flex items-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-note-sticky text-sm"></i>
+                    <span class="hidden sm:inline">Ghi Chú</span>
+                </button>
+                <button id="navBtnChat" onclick="switchMainTab('chat')" class="touch-btn px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-1.5 relative transition-all">
+                    <i class="fa-solid fa-comments text-sm"></i>
+                    <span class="hidden sm:inline">Chat P2P</span>
+                    <span id="chatUnreadDot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500"></span>
+                </button>
+                <button id="navBtnStorage" onclick="openStorageModal()" class="touch-btn px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-1.5 transition-all">
+                    <i class="fa-solid fa-chart-pie text-sm"></i>
+                    <span class="hidden sm:inline">Dung Lượng</span>
+                </button>
+            </nav>
+
+            <!-- Actions & Status Badge -->
+            <div class="flex items-center space-x-2">
+                <button onclick="openP2PConnectModal()" id="p2pStatusBadge" class="touch-btn px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-300 text-xs font-semibold flex items-center space-x-1.5" title="Thiết lập kết nối P2P">
+                    <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="statusText" class="hidden md:inline">Chưa kết nối</span>
+                    <i class="fa-solid fa-network-wired sm:hidden"></i>
+                </button>
+
+                <button onclick="toggleTheme()" class="touch-btn w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center transition-colors text-slate-600 dark:text-slate-300">
+                    <i id="themeIcon" class="fa-solid fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto w-full flex-1 p-2 sm:p-4 md:p-6 flex flex-col min-h-0">
+
+        <!-- ================= SECTION 1: NOTES APP (RESPONSIVE SPLIT / DETAIL VIEW) ================= -->
+        <div id="sectionNotes" class="flex-1 flex flex-col md:flex-row gap-4 h-full min-h-0">
+            
+            <!-- LEFT COLUMN: NOTES LIST (320px on desktop, full-width on mobile master) -->
+            <aside id="notesListPane" class="w-full md:w-80 lg:w-96 flex-shrink-0 flex flex-col bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm overflow-hidden min-h-[500px] md:min-h-0">
+                
+                <!-- Search & Filters Header -->
+                <div class="p-3 border-b border-slate-200 dark:border-slate-700 space-y-2 bg-slate-50/50 dark:bg-slate-800/50">
+                    <div class="flex items-center space-x-2">
+                        <div class="relative flex-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                            <input type="text" id="searchInput" oninput="handleSearchAndFilter()" placeholder="Tìm kiếm ghi chú..." class="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xs focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <button onclick="createNewNote()" class="touch-btn px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center space-x-1 flex-shrink-0">
+                            <i class="fa-solid fa-plus"></i>
+                            <span class="hidden sm:inline">Tạo mới</span>
+                        </button>
+                    </div>
+
+                    <!-- Filter Options -->
+                    <div class="flex items-center space-x-1 text-[11px] overflow-x-auto pb-1 scrollbar-none">
+                        <button onclick="setFilterCategory('all')" id="btnFilterAll" class="filter-tab touch-btn px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-semibold whitespace-nowrap">Tất cả</button>
+                        <button onclick="setFilterCategory('pinned')" id="btnFilterPinned" class="filter-tab touch-btn px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"><i class="fa-solid fa-thumbtack mr-1 text-amber-500"></i>Đã ghim</button>
+                        <button onclick="setFilterMediaType('text')" id="btnFilterText" class="filter-tab touch-btn px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"><i class="fa-solid fa-align-left mr-1"></i>Chữ</button>
+                        <button onclick="setFilterMediaType('image')" id="btnFilterImage" class="filter-tab touch-btn px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"><i class="fa-solid fa-image mr-1 text-blue-500"></i>Ảnh</button>
+                        <button onclick="setFilterMediaType('video')" id="btnFilterVideo" class="filter-tab touch-btn px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap"><i class="fa-solid fa-video mr-1 text-rose-500"></i>Video</button>
+                    </div>
+                </div>
+
+                <!-- Notes Scrollable List -->
+                <div id="notesContainer" class="flex-1 overflow-y-auto p-2 space-y-2">
+                    <!-- Dynamic Notes Rendered Here -->
+                </div>
+
+                <!-- Backup & Restore Actions Footer -->
+                <div class="p-2 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between text-xs">
+                    <button onclick="exportBackupJSON()" class="touch-btn px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center space-x-1" title="Sao lưu dữ liệu ra file JSON">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Sao lưu JSON</span>
+                    </button>
+                    <label class="touch-btn px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer flex items-center space-x-1" title="Khôi phục dữ liệu từ JSON">
+                        <i class="fa-solid fa-upload"></i>
+                        <span>Phục hồi</span>
+                        <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="importBackupJSON(event)">
+                    </label>
+                </div>
+            </aside>
+
+            <!-- RIGHT COLUMN: NOTE EDITOR & DETAIL VIEW (Desktop flex-1, Mobile detail pane) -->
+            <section id="noteDetailPane" class="flex-1 hidden md:flex flex-col bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm overflow-hidden min-h-[500px] md:min-h-0">
+                
+                <!-- Mobile Top Navigation Back Bar -->
+                <div class="md:hidden flex items-center justify-between p-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                    <button onclick="backToNotesListMobile()" class="touch-btn px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center space-x-2">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>Danh sách</span>
+                    </button>
+                    <span class="text-xs font-semibold text-slate-500">Chi tiết ghi chú</span>
+                </div>
+
+                <!-- Active Note Editor Header -->
+                <div id="editorHeader" class="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 bg-slate-50/30 dark:bg-slate-900/20">
+                    <input type="text" id="noteTitleInput" onchange="saveActiveNote()" placeholder="Tiêu đề ghi chú..." class="text-base sm:text-lg font-bold bg-transparent border-none focus:outline-none flex-1 text-slate-800 dark:text-slate-100">
+
+                    <div class="flex items-center space-x-1">
+                        <button onclick="togglePinActiveNote()" id="btnPinNote" class="touch-btn w-9 h-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-amber-500 transition-colors" title="Ghim ghi chú">
+                            <i class="fa-solid fa-thumbtack"></i>
+                        </button>
+                        <button onclick="exportCurrentNoteTxt()" class="touch-btn w-9 h-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors" title="Xuất file TXT">
+                            <i class="fa-solid fa-file-export"></i>
+                        </button>
+                        <button onclick="deleteActiveNote()" class="touch-btn w-9 h-9 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-500 transition-colors" title="Xóa ghi chú">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Text Content Editor -->
+                <div class="flex-1 p-3 sm:p-5 flex flex-col space-y-4 overflow-y-auto">
+                    <textarea id="noteContentInput" onchange="saveActiveNote()" placeholder="Bắt đầu nhập nội dung ghi chú tại đây..." class="w-full flex-1 min-h-[200px] bg-transparent border-none focus:outline-none resize-none text-sm leading-relaxed text-slate-700 dark:text-slate-200"></textarea>
+
+                    <!-- Attached Media Files Section -->
+                    <div class="border-t border-slate-200 dark:border-slate-700 pt-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+                                <i class="fa-solid fa-paperclip"></i>
+                                <span>Tệp đa phương tiện đính kèm</span>
+                            </h4>
+                            <label class="touch-btn px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 rounded-xl text-xs font-semibold cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors">
+                                <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>Thêm Ảnh / Video
+                                <input type="file" id="noteFileInput" accept="image/*,video/*" multiple class="hidden" onchange="handleNoteFileUpload(event)">
+                            </label>
+                        </div>
+
+                        <!-- Media Grid Gallery -->
+                        <div id="noteMediaGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                            <!-- Dynamic Media Items -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editor Footer Metadata -->
+                <div class="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-[11px] text-slate-400 flex items-center justify-between">
+                    <span id="noteTimestamp">Cập nhật: --</span>
+                    <span id="noteMediaStats">0 tệp đính kèm</span>
+                </div>
+            </section>
+        </div>
+
+        <!-- ================= SECTION 2: P2P OFFLINE CHAT ================= -->
+        <div id="sectionChat" class="hidden flex-1 grid-cols-1 lg:grid-cols-4 gap-4 min-h-0">
+            <!-- P2P Info Sidebar -->
+            <div class="lg:col-span-1 bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700 flex flex-col justify-between">
+                <div>
+                    <h3 class="font-bold text-sm sm:text-base mb-2 flex items-center space-x-2">
+                        <i class="fa-solid fa-tower-cell text-indigo-500"></i>
+                        <span>Kết nối Trực tiếp (P2P)</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                        Truyền văn bản, ảnh và video trực tiếp giữa 2 thiết bị mà không đi qua máy chủ Internet.
+                    </p>
+
+                    <div class="space-y-2 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+                        <div class="font-semibold text-slate-700 dark:text-slate-300">Hướng dẫn kết nối:</div>
+                        <ol class="list-decimal list-inside space-y-1 text-slate-500 dark:text-slate-400 text-[11px]">
+                            <li>Bật Hotspot Wi-Fi từ điện thoại (không cần 4G).</li>
+                            <li>Kết nối thiết bị thứ 2 vào Wi-Fi Hotspot đó.</li>
+                            <li>Mở cửa sổ "Kết nối" và quét/sao chép Mã P2P.</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <button onclick="openP2PConnectModal()" class="touch-btn w-full mt-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-qrcode"></i>
+                    <span>Tạo / Dán Mã Kết Nối</span>
+                </button>
+            </div>
+
+            <!-- Chat Room Window -->
+            <div class="lg:col-span-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm flex flex-col h-[550px] lg:h-full overflow-hidden">
+                <!-- Chat Window Header -->
+                <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+                            <i class="fa-solid fa-user-large"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-xs sm:text-sm">Thiết bị Peer</h4>
+                            <p id="chatSubStatus" class="text-[10px] text-slate-400">Chưa kết nối</p>
+                        </div>
+                    </div>
+                    <button onclick="clearChatHistory()" class="touch-btn px-2.5 py-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-xs font-semibold transition-colors" title="Xóa lịch sử tin nhắn">
+                        <i class="fa-solid fa-trash-can mr-1"></i>Xóa chat
+                    </button>
+                </div>
+
+                <!-- Chat Messages Scroll Area -->
+                <div id="chatMessagesContainer" class="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50/30 dark:bg-slate-900/20">
+                    <!-- Dynamic Messages -->
+                </div>
+
+                <!-- Chat Input Controls -->
+                <div class="p-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 space-y-2">
+                    <!-- File Preview Area -->
+                    <div id="chatFilePreviewArea" class="hidden flex items-center justify-between p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700/50 text-xs">
+                        <div class="flex items-center space-x-2 truncate">
+                            <i id="chatFilePreviewIcon" class="fa-solid fa-file text-indigo-600"></i>
+                            <span id="chatFilePreviewName" class="font-medium truncate max-w-[200px]">File.ext</span>
+                            <span id="chatFilePreviewSize" class="text-slate-400 text-[10px]">(0 KB)</span>
+                        </div>
+                        <button onclick="clearChatFilePreview()" class="touch-btn text-slate-400 hover:text-rose-500"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <label class="touch-btn w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center cursor-pointer text-slate-500 dark:text-slate-300 flex-shrink-0" title="Đính kèm media">
+                            <i class="fa-solid fa-paperclip text-sm"></i>
+                            <input type="file" id="chatFileInput" accept="image/*,video/*" class="hidden" onchange="handleChatFileSelect(event)">
+                        </label>
+
+                        <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." onkeydown="if(event.key==='Enter') sendChatMessage()"
+                            class="flex-1 px-3.5 py-2.5 bg-slate-100 dark:bg-slate-700/60 border border-transparent focus:border-indigo-500 rounded-xl text-xs sm:text-sm focus:outline-none">
+
+                        <button onclick="sendChatMessage()" class="touch-btn w-10 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md flex-shrink-0">
+                            <i class="fa-solid fa-paper-plane text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ================= MODALS & LIGHTBOX ================= -->
+
+    <!-- Storage Usage Donut Chart Modal -->
+    <div id="storageModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-5 border border-slate-200 dark:border-slate-700 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                <h3 class="font-bold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-pie text-indigo-500"></i>
+                    <span>Dung Lượng Lưu Trữ</span>
+                </h3>
+                <button onclick="closeStorageModal()" class="touch-btn text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- SVG Donut Chart -->
+            <div class="flex flex-col items-center justify-center py-2">
+                <div class="relative w-36 h-36">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                        <path class="text-slate-200 dark:text-slate-700" stroke-width="3.8" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path id="donutSegment" class="text-indigo-600 transition-all duration-500" stroke-dasharray="0, 100" stroke-width="3.8" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="storagePercentText" class="text-xl font-bold">0%</span>
+                        <span class="text-[10px] text-slate-400 uppercase">Đã dùng</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-1.5 text-xs bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl">
+                <div class="flex justify-between text-slate-600 dark:text-slate-300">
+                    <span>Đã sử dụng:</span>
+                    <span id="storageUsedText" class="font-semibold">0 MB</span>
+                </div>
+                <div class="flex justify-between text-slate-600 dark:text-slate-300">
+                    <span>Khả dụng tối đa:</span>
+                    <span id="storageQuotaText" class="font-semibold">0 MB</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- P2P Connection Modal -->
+    <div id="p2pModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-5 border border-slate-200 dark:border-slate-700 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                <h3 class="font-bold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-network-wired text-indigo-500"></i>
+                    <span>Thiết Lập Kết Nối P2P</span>
+                </h3>
+                <button onclick="closeP2PConnectModal()" class="touch-btn text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Tab Mode Selection -->
+            <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-700/50 rounded-xl text-xs font-semibold">
+                <button id="p2pModeBtnOffer" onclick="setP2PMode('offer')" class="touch-btn py-2 rounded-lg bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400">1. Máy Tạo Mã (Host)</button>
+                <button id="p2pModeBtnAnswer" onclick="setP2PMode('answer')" class="touch-btn py-2 rounded-lg text-slate-500">2. Máy Nhập Mã (Guest)</button>
+            </div>
+
+            <!-- Offer View -->
+            <div id="p2pViewOffer" class="space-y-3">
+                <p class="text-xs text-slate-500">Bước 1: Bấm "Tạo Mã", sau đó sao chép và gửi cho máy thứ 2.</p>
+                <button onclick="generateP2POffer()" class="touch-btn w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-xs">Tạo Mã Kết Nối (Offer Code)</button>
+                <textarea id="p2pOfferCodeOutput" readonly rows="2" placeholder="Mã xuất hiện tại đây..." class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-xs font-mono border border-slate-200 dark:border-slate-700 focus:outline-none"></textarea>
+                <button onclick="copyToClipboard(document.getElementById('p2pOfferCodeOutput').value)" class="touch-btn w-full py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-xs font-medium rounded-xl">Sao chép Mã Kết Nối</button>
+
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <p class="text-xs text-slate-500 mb-1">Bước 2: Dán Mã Phản Hồi từ máy thứ 2 vào đây:</p>
+                    <textarea id="p2pAnswerCodeInput" rows="2" placeholder="Dán Mã Phản Hồi tại đây..." class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-xs font-mono border border-slate-200 dark:border-slate-700 mb-2 focus:outline-none"></textarea>
+                    <button onclick="acceptP2PAnswer()" class="touch-btn w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-xl">Hoàn Tất Kết Nối</button>
+                </div>
+            </div>
+
+            <!-- Answer View -->
+            <div id="p2pViewAnswer" class="hidden space-y-3">
+                <p class="text-xs text-slate-500">Dán Mã Kết Nối từ máy Host vào đây để tạo Mã Phản Hồi:</p>
+                <textarea id="p2pRemoteOfferInput" rows="2" placeholder="Dán Mã Kết Nối (Offer Code) tại đây..." class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-xs font-mono border border-slate-200 dark:border-slate-700 focus:outline-none"></textarea>
+                <button onclick="generateP2PAnswer()" class="touch-btn w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-xs">Tạo Mã Phản Hồi (Answer Code)</button>
+                
+                <textarea id="p2pAnswerCodeOutput" readonly rows="2" placeholder="Mã phản hồi xuất hiện tại đây..." class="w-full p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-xs font-mono border border-slate-200 dark:border-slate-700 focus:outline-none"></textarea>
+                <button onclick="copyToClipboard(document.getElementById('p2pAnswerCodeOutput').value)" class="touch-btn w-full py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-xs font-medium rounded-xl">Sao chép Mã Phản Hồi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox Media Viewer -->
+    <div id="lightboxModal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300 flex flex-col justify-between p-4" onclick="closeLightboxOnBackdrop(event)">
+        <div class="flex items-center justify-between text-white z-10">
+            <span id="lightboxFileName" class="text-xs font-semibold truncate max-w-xs">Xem Tệp</span>
+            <div class="flex items-center space-x-2">
+                <button onclick="rotateLightboxImage()" class="touch-btn w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"><i class="fa-solid fa-rotate-right"></i></button>
+                <button onclick="closeLightbox()" class="touch-btn w-9 h-9 rounded-xl bg-rose-600 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+        <div id="lightboxViewport" class="flex-1 flex items-center justify-center relative my-4 overflow-hidden">
+            <img id="lightboxImage" src="" class="lightbox-img max-h-full max-w-full object-contain transition-transform duration-150 rounded-lg hidden">
+            <video id="lightboxVideo" controls class="max-h-full max-w-full rounded-lg hidden"></video>
+        </div>
+    </div>
+
+    <!-- Application JavaScript Engine -->
+    <script>
+        let db;
+        let notesCache = [];
+        let chatMessagesCache = [];
+        let activeNoteId = null;
+
+        // Search & Filters State
+        let currentCategory = 'all'; // 'all', 'pinned'
+        let currentMediaType = 'all'; // 'all', 'text', 'image', 'video'
+        let searchQuery = '';
+
+        // P2P WebRTC Variables
+        let peerConnection = null;
+        let dataChannel = null;
+        const broadcastChannel = new BroadcastChannel('offline_local_p2p_channel');
+
+        // Lightbox state
+        let lbRotation = 0;
+
+        // Initialize IndexedDB Storage
+        const dbReq = indexedDB.open('OfflineP2PNotesDB_v2', 1);
+        dbReq.onupgradeneeded = (e) => {
+            const database = e.target.result;
+            if (!database.objectStoreNames.contains('notes')) database.createObjectStore('notes', { keyPath: 'id' });
+            if (!database.objectStoreNames.contains('chats')) database.createObjectStore('chats', { keyPath: 'id' });
+        };
+        dbReq.onsuccess = (e) => {
+            db = e.target.result;
+            loadNotesFromDB();
+            loadChatHistoryFromDB();
+            initWebRTC();
+            initBroadcastChannel();
+            updateStorageMetrics();
+        };
+
+        // --- NAVIGATION & MAIN TAB SWITCHING ---
+        function switchMainTab(tab) {
+            const secNotes = document.getElementById('sectionNotes');
+            const secChat = document.getElementById('sectionChat');
+            const btnNotes = document.getElementById('navBtnNotes');
+            const btnChat = document.getElementById('navBtnChat');
+
+            if (tab === 'notes') {
+                secNotes.classList.remove('hidden');
+                secNotes.classList.add('flex');
+                secChat.classList.add('hidden');
+                secChat.classList.remove('grid');
+
+                btnNotes.className = 'touch-btn px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm flex items-center space-x-1.5 transition-all';
+                btnChat.className = 'touch-btn px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-1.5 relative transition-all';
+            } else {
+                secNotes.classList.add('hidden');
+                secNotes.classList.remove('flex');
+                secChat.classList.remove('hidden');
+                secChat.classList.add('grid');
+
+                btnChat.className = 'touch-btn px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm flex items-center space-x-1.5 relative transition-all';
+                btnNotes.className = 'touch-btn px-3 py-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center space-x-1.5 transition-all';
+                
+                document.getElementById('chatUnreadDot').classList.add('hidden');
+                scrollChatToBottom();
+            }
+        }
+
+        // Mobile Master-Detail Navigation Logic
+        function openNoteDetailMobile() {
+            if (window.innerWidth < 768) {
+                document.body.classList.add('mobile-pane-detail-active');
+            }
+        }
+
+        function backToNotesListMobile() {
+            document.body.classList.remove('mobile-pane-detail-active');
+        }
+
+        // --- NOTES CORE LOGIC ---
+        function loadNotesFromDB() {
+            if (!db) return;
+            const tx = db.transaction(['notes'], 'readonly');
+            const req = tx.objectStore('notes').getAll();
+            req.onsuccess = (e) => {
+                notesCache = e.target.result || [];
+                // Sort by updated time desc
+                notesCache.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+                
+                renderNotesList();
+
+                if (notesCache.length > 0) {
+                    if (!activeNoteId || !notesCache.find(n => n.id === activeNoteId)) {
+                        setActiveNote(notesCache[0].id, false);
+                    } else {
+                        renderActiveNoteDetail();
+                    }
+                } else {
+                    createNewNote();
+                }
+            };
+        }
+
+        function createNewNote() {
+            const newNote = {
+                id: Date.now().toString(),
+                title: 'Ghi chú mới',
+                content: '',
+                pinned: false,
+                media: [],
+                updatedAt: new Date().toISOString()
+            };
+
+            const tx = db.transaction(['notes'], 'readwrite');
+            tx.objectStore('notes').put(newNote);
+            tx.oncomplete = () => {
+                notesCache.unshift(newNote);
+                setActiveNote(newNote.id, true);
+                renderNotesList();
+                updateStorageMetrics();
+            };
+        }
+
+        function setActiveNote(id, openMobileDetail = true) {
+            activeNoteId = id;
+            renderActiveNoteDetail();
+            renderNotesList();
+
+            if (openMobileDetail) {
+                openNoteDetailMobile();
+            }
+        }
+
+        function renderActiveNoteDetail() {
+            const note = notesCache.find(n => n.id === activeNoteId);
+            if (!note) return;
+
+            document.getElementById('noteTitleInput').value = note.title || '';
+            document.getElementById('noteContentInput').value = note.content || '';
+            document.getElementById('noteTimestamp').textContent = `Cập nhật: ${new Date(note.updatedAt).toLocaleString('vi-VN')}`;
+            
+            const mediaCount = (note.media || []).length;
+            document.getElementById('noteMediaStats').textContent = `${mediaCount} tệp đính kèm`;
+
+            const btnPin = document.getElementById('btnPinNote');
+            btnPin.className = note.pinned 
+                ? 'touch-btn w-9 h-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-amber-500 transition-colors' 
+                : 'touch-btn w-9 h-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-amber-500 transition-colors';
+
+            renderMediaGrid(note.media || []);
+        }
+
+        function saveActiveNote() {
+            const note = notesCache.find(n => n.id === activeNoteId);
+            if (!note) return;
+
+            note.title = document.getElementById('noteTitleInput').value.trim() || 'Ghi chú không tiêu đề';
+            note.content = document.getElementById('noteContentInput').value;
+            note.updatedAt = new Date().toISOString();
+
+            const tx = db.transaction(['notes'], 'readwrite');
+            tx.objectStore('notes').put(note);
+            tx.oncomplete = () => {
+                renderNotesList();
+                updateStorageMetrics();
+            };
+        }
+
+        function togglePinActiveNote() {
+            const note = notesCache.find(n => n.id === activeNoteId);
+            if (!note) return;
+
+            note.pinned = !note.pinned;
+            note.updatedAt = new Date().toISOString();
+
+            const tx = db.transaction(['notes'], 'readwrite');
+            tx.objectStore('notes').put(note);
+            tx.oncomplete = () => {
+                renderActiveNoteDetail();
+                renderNotesList();
+                showToast(note.pinned ? 'Đã ghim ghi chú!' : 'Đã bỏ ghim ghi chú!');
+            };
+        }
+
+        function deleteActiveNote() {
+            if (!activeNoteId) return;
+
+            const tx = db.transaction(['notes'], 'readwrite');
+            tx.objectStore('notes').delete(activeNoteId);
+            tx.oncomplete = () => {
+                notesCache = notesCache.filter(n => n.id !== activeNoteId);
+                showToast('Đã xóa ghi chú!');
+                backToNotesListMobile();
+
+                if (notesCache.length > 0) {
+                    setActiveNote(notesCache[0].id, false);
+                } else {
+                    createNewNote();
+                }
+                updateStorageMetrics();
+            };
+        }
+
+        // --- MEDIA HANDLING & GRID ---
+        function handleNoteFileUpload(e) {
+            const files = Array.from(e.target.files);
+            if (!files.length) return;
+
+            const note = notesCache.find(n => n.id === activeNoteId);
+            if (!note) return;
+
+            if (!note.media) note.media = [];
+
+            let readCount = 0;
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    note.media.push({
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                        name: file.name,
+                        type: file.type.startsWith('video/') ? 'video' : 'image',
+                        data: evt.target.result
+                    });
+                    readCount++;
+                    if (readCount === files.length) {
+                        saveActiveNote();
+                        renderActiveNoteDetail();
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function removeMediaFromNote(mediaId) {
+            const note = notesCache.find(n => n.id === activeNoteId);
+            if (!note) return;
+
+            note.media = (note.media || []).filter(m => m.id !== mediaId);
+            saveActiveNote();
+            renderActiveNoteDetail();
+        }
+
+        function renderMediaGrid(mediaArr) {
+            const container = document.getElementById('noteMediaGrid');
+            if (!mediaArr || mediaArr.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 col-span-full py-2">Chưa có ảnh hoặc video nào được đính kèm.</p>`;
+                return;
+            }
+
+            container.innerHTML = mediaArr.map(m => `
+                <div class="relative group rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 aspect-video border border-slate-200 dark:border-slate-600">
+                    ${m.type === 'image' 
+                        ? `<img src="${m.data}" onclick="openLightboxMedia('${m.data}', 'image', '${m.name}')" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform duration-200">`
+                        : `<div onclick="openLightboxMedia('${m.data}', 'video', '${m.name}')" class="w-full h-full flex items-center justify-center cursor-pointer bg-black/20">
+                             <i class="fa-solid fa-circle-play text-2xl text-white"></i>
+                           </div>`
+                    }
+                    <button onclick="removeMediaFromNote('${m.id}')" class="touch-btn absolute top-1 right-1 w-7 h-7 bg-rose-600 text-white rounded-lg opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs shadow-md">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // --- FILTERING & RENDER NOTES LIST ---
+        function handleSearchAndFilter() {
+            searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+            renderNotesList();
+        }
+
+        function setFilterCategory(cat) {
+            currentCategory = cat;
+            document.getElementById('btnFilterAll').className = cat === 'all' ? 'filter-tab touch-btn px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-semibold whitespace-nowrap' : 'filter-tab touch-btn px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap';
+            document.getElementById('btnFilterPinned').className = cat === 'pinned' ? 'filter-tab touch-btn px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-semibold whitespace-nowrap' : 'filter-tab touch-btn px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap';
+            renderNotesList();
+        }
+
+        function setFilterMediaType(type) {
+            currentMediaType = currentMediaType === type ? 'all' : type;
+            
+            ['text', 'image', 'video'].forEach(t => {
+                const btn = document.getElementById(`btnFilter${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                if (currentMediaType === t) {
+                    btn.className = 'filter-tab touch-btn px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-semibold whitespace-nowrap';
+                } else {
+                    btn.className = 'filter-tab touch-btn px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap';
+                }
+            });
+
+            renderNotesList();
+        }
+
+        function renderNotesList() {
+            const container = document.getElementById('notesContainer');
+
+            let filtered = notesCache.filter(note => {
+                // Category Filter
+                if (currentCategory === 'pinned' && !note.pinned) return false;
+
+                // Media Type Filter
+                const media = note.media || [];
+                if (currentMediaType === 'text' && media.length > 0) return false;
+                if (currentMediaType === 'image' && !media.some(m => m.type === 'image')) return false;
+                if (currentMediaType === 'video' && !media.some(m => m.type === 'video')) return false;
+
+                // Search Filter
+                if (searchQuery) {
+                    const titleMatch = (note.title || '').toLowerCase().includes(searchQuery);
+                    const contentMatch = (note.content || '').toLowerCase().includes(searchQuery);
+                    if (!titleMatch && !contentMatch) return false;
+                }
+
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 text-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-folder-open text-2xl mb-2"></i>
+                        <p>Không tìm thấy ghi chú nào.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(note => {
+                const isActive = note.id === activeNoteId;
+                const mediaCount = (note.media || []).length;
+
+                return `
+                    <div onclick="setActiveNote('${note.id}')" class="p-3 rounded-xl border cursor-pointer transition-all duration-150 ${
+                        isActive 
+                            ? 'bg-indigo-50/80 dark:bg-indigo-900/30 border-indigo-500 shadow-sm' 
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700/70 hover:border-slate-300 dark:hover:border-slate-600'
+                    }">
+                        <div class="flex items-center justify-between mb-1">
+                            <h4 class="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100 truncate pr-2">${escapeHtml(note.title || 'Ghi chú mới')}</h4>
+                            ${note.pinned ? '<i class="fa-solid fa-thumbtack text-amber-500 text-xs"></i>' : ''}
+                        </div>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mb-2">${escapeHtml(note.content || 'Chưa có nội dung...')}</p>
+                        <div class="flex items-center justify-between text-[10px] text-slate-400">
+                            <span>${new Date(note.updatedAt).toLocaleDateString('vi-VN')}</span>
+                            ${mediaCount > 0 ? `<span class="flex items-center space-x-1"><i class="fa-solid fa-paperclip"></i><span>${mediaCount}</span></span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- BACKUP & EXPORT FEATURES ---
+        function exportCurrentNoteTxt() {
+            const note = notesCache.find(n => n.id === activeNoteId);
+            if (!note) return;
+
+            const content = `TIÊU ĐỀ: ${note.title}\nCẬP NHẬT: ${new Date(note.updatedAt).toLocaleString('vi-VN')}\n\nNỘI DUNG:\n${note.content}`;
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${note.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Đã xuất file .TXT thành công!');
+        }
+
+        function exportBackupJSON() {
+            const backupData = {
+                version: 2,
+                exportedAt: new Date().toISOString(),
+                notes: notesCache,
+                chats: chatMessagesCache
+            };
+
+            const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `P2P_Offline_Notes_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Đã xuất bản sao lưu .JSON!');
+        }
+
+        function importBackupJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const imported = JSON.parse(evt.target.result);
+                    if (imported.notes && Array.isArray(imported.notes)) {
+                        const tx = db.transaction(['notes', 'chats'], 'readwrite');
+                        const noteStore = tx.objectStore('notes');
+                        const chatStore = tx.objectStore('chats');
+
+                        imported.notes.forEach(n => noteStore.put(n));
+                        if (imported.chats) imported.chats.forEach(c => chatStore.put(c));
+
+                        tx.oncomplete = () => {
+                            loadNotesFromDB();
+                            loadChatHistoryFromDB();
+                            showToast('Khôi phục dữ liệu thành công!');
+                            updateStorageMetrics();
+                        };
+                    }
+                } catch (err) {
+                    showToast('File sao lưu JSON không hợp lệ!', true);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- STORAGE METRICS & DONUT CHART ---
+        async function updateStorageMetrics() {
+            if (navigator.storage && navigator.storage.estimate) {
+                const estimate = await navigator.storage.estimate();
+                const usedMb = (estimate.usage / (1024 * 1024)).toFixed(1);
+                const quotaMb = (estimate.quota / (1024 * 1024)).toFixed(0);
+                const percent = Math.min(100, Math.round((estimate.usage / estimate.quota) * 100));
+
+                document.getElementById('storageUsedText').textContent = `${usedMb} MB`;
+                document.getElementById('storageQuotaText').textContent = `${quotaMb} MB`;
+                document.getElementById('storagePercentText').textContent = `${percent}%`;
+
+                // Update SVG Donut Segment
+                const donut = document.getElementById('donutSegment');
+                donut.setAttribute('stroke-dasharray', `${percent}, 100`);
+            }
+        }
+
+        function openStorageModal() {
+            updateStorageMetrics();
+            document.getElementById('storageModal').classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeStorageModal() {
+            document.getElementById('storageModal').classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        // --- WEBRTC & P2P OFFLINE CHAT ENGINE ---
+        function initWebRTC() {
+            const config = { iceServers: [] }; // Fully offline local connection
+            peerConnection = new RTCPeerConnection(config);
+
+            peerConnection.ondatachannel = (e) => {
+                setupDataChannel(e.channel);
+            };
+        }
+
+        function setupDataChannel(channel) {
+            dataChannel = channel;
+            dataChannel.onopen = () => updateP2PStatus(true);
+            dataChannel.onclose = () => updateP2PStatus(false);
+            dataChannel.onmessage = (e) => handleIncomingP2PMessage(e.data);
+        }
+
+        function updateP2PStatus(connected) {
+            const dot = document.getElementById('statusDot');
+            const txt = document.getElementById('statusText');
+            const sub = document.getElementById('chatSubStatus');
+
+            if (connected) {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+                txt.textContent = 'Đã kết nối';
+                sub.textContent = 'Trực tiếp thiết bị P2P';
+                showToast('Đã kết nối thiết bị P2P thành công!');
+            } else {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse';
+                txt.textContent = 'Chưa kết nối';
+                sub.textContent = 'Đang chờ kết nối...';
+            }
+        }
+
+        function setP2PMode(mode) {
+            const offerView = document.getElementById('p2pViewOffer');
+            const answerView = document.getElementById('p2pViewAnswer');
+            const btnOffer = document.getElementById('p2pModeBtnOffer');
+            const btnAnswer = document.getElementById('p2pModeBtnAnswer');
+
+            if (mode === 'offer') {
+                offerView.classList.remove('hidden');
+                answerView.classList.add('hidden');
+                btnOffer.className = 'touch-btn py-2 rounded-lg bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400';
+                btnAnswer.className = 'touch-btn py-2 rounded-lg text-slate-500';
+            } else {
+                offerView.classList.add('hidden');
+                answerView.classList.remove('hidden');
+                btnAnswer.className = 'touch-btn py-2 rounded-lg bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400';
+                btnOffer.className = 'touch-btn py-2 rounded-lg text-slate-500';
+            }
+        }
+
+        async function generateP2POffer() {
+            const dc = peerConnection.createDataChannel('offline_chat');
+            setupDataChannel(dc);
+
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            setTimeout(() => {
+                document.getElementById('p2pOfferCodeOutput').value = JSON.stringify(peerConnection.localDescription);
+                broadcastChannel.postMessage({ type: 'OFFER', data: peerConnection.localDescription });
+            }, 500);
+        }
+
+        async function generateP2PAnswer() {
+            const offerStr = document.getElementById('p2pRemoteOfferInput').value;
+            if (!offerStr) return showToast('Vui lòng dán Mã Kết Nối!', true);
+
+            const offer = JSON.parse(offerStr);
+            await peerConnection.setRemoteDescription(offer);
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+
+            setTimeout(() => {
+                document.getElementById('p2pAnswerCodeOutput').value = JSON.stringify(peerConnection.localDescription);
+                broadcastChannel.postMessage({ type: 'ANSWER', data: peerConnection.localDescription });
+            }, 500);
+        }
+
+        async function acceptP2PAnswer() {
+            const answerStr = document.getElementById('p2pAnswerCodeInput').value;
+            if (!answerStr) return showToast('Vui lòng dán Mã Phản Hồi!', true);
+
+            const answer = JSON.parse(answerStr);
+            await peerConnection.setRemoteDescription(answer);
+            closeP2PConnectModal();
+        }
+
+        function initBroadcastChannel() {
+            broadcastChannel.onmessage = async (e) => {
+                const { type, data } = e.data;
+                if (type === 'OFFER' && peerConnection.signalingState === 'stable') {
+                    await peerConnection.setRemoteDescription(data);
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    broadcastChannel.postMessage({ type: 'ANSWER', data: peerConnection.localDescription });
+                } else if (type === 'ANSWER' && peerConnection.signalingState === 'have-local-offer') {
+                    await peerConnection.setRemoteDescription(data);
+                } else if (type === 'CHAT_MSG') {
+                    saveAndRenderChatMessage(data);
+                }
+            };
+        }
+
+        function openP2PConnectModal() {
+            document.getElementById('p2pModal').classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeP2PConnectModal() {
+            document.getElementById('p2pModal').classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        // --- P2P MESSAGING LOGIC ---
+        let currentChatFile = null;
+
+        function handleChatFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                currentChatFile = {
+                    name: file.name,
+                    size: (file.size / 1024).toFixed(1) + ' KB',
+                    type: file.type.startsWith('video/') ? 'video' : 'image',
+                    data: evt.target.result
+                };
+
+                document.getElementById('chatFilePreviewName').textContent = file.name;
+                document.getElementById('chatFilePreviewSize').textContent = `(${currentChatFile.size})`;
+                document.getElementById('chatFilePreviewIcon').className = currentChatFile.type === 'video' ? 'fa-solid fa-video text-indigo-600' : 'fa-solid fa-image text-indigo-600';
+                document.getElementById('chatFilePreviewArea').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearChatFilePreview() {
+            currentChatFile = null;
+            document.getElementById('chatFileInput').value = '';
+            document.getElementById('chatFilePreviewArea').classList.add('hidden');
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+
+            if (!text && !currentChatFile) return;
+
+            const msgObj = {
+                id: Date.now().toString(),
+                sender: 'me',
+                text: text,
+                file: currentChatFile,
+                timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            saveAndRenderChatMessage(msgObj);
+
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify(msgObj));
+            } else {
+                broadcastChannel.postMessage({ type: 'CHAT_MSG', data: { ...msgObj, sender: 'peer' } });
+            }
+
+            input.value = '';
+            clearChatFilePreview();
+        }
+
+        function handleIncomingP2PMessage(raw) {
+            try {
+                const msgObj = JSON.parse(raw);
+                msgObj.sender = 'peer';
+                saveAndRenderChatMessage(msgObj);
+
+                if (document.getElementById('sectionChat').classList.contains('hidden')) {
+                    document.getElementById('chatUnreadDot').classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error('Lỗi nhận tin nhắn P2P:', err);
+            }
+        }
+
+        function saveAndRenderChatMessage(msg) {
+            chatMessagesCache.push(msg);
+            const tx = db.transaction(['chats'], 'readwrite');
+            tx.objectStore('chats').put(msg);
+            renderChatMessages();
+            updateStorageMetrics();
+        }
+
+        function loadChatHistoryFromDB() {
+            if (!db) return;
+            const tx = db.transaction(['chats'], 'readonly');
+            const req = tx.objectStore('chats').getAll();
+            req.onsuccess = (e) => {
+                chatMessagesCache = e.target.result || [];
+                renderChatMessages();
+            };
+        }
+
+        function renderChatMessages() {
+            const container = document.getElementById('chatMessagesContainer');
+            if (chatMessagesCache.length === 0) {
+                container.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center text-slate-400 py-12">
+                        <i class="fa-solid fa-comments text-3xl mb-2"></i>
+                        <p class="text-xs">Chưa có tin nhắn nào. Bắt đầu trò chuyện!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = chatMessagesCache.map(msg => {
+                const isMe = msg.sender === 'me';
+                return `
+                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                        <div class="max-w-[85%] sm:max-w-[70%] rounded-2xl p-3 text-xs shadow-sm ${
+                            isMe ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-bl-none'
+                        }">
+                            ${msg.text ? `<p class="leading-relaxed mb-1">${escapeHtml(msg.text)}</p>` : ''}
+                            ${renderChatFilePayload(msg.file)}
+                            <div class="text-[10px] opacity-70 text-right mt-1">${msg.timestamp}</div>
+                        </div>
+                        <button onclick="convertChatToNote('${msg.id}')" class="touch-btn text-[10px] text-slate-400 hover:text-indigo-500 mt-0.5 px-1">
+                            <i class="fa-solid fa-bookmark mr-1"></i>Lưu thành Ghi chú
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            scrollChatToBottom();
+        }
+
+        function renderChatFilePayload(file) {
+            if (!file) return '';
+            if (file.type === 'image') {
+                return `<img src="${file.data}" onclick="openLightboxMedia('${file.data}', 'image', '${file.name}')" class="rounded-xl mt-1 max-h-48 object-cover cursor-pointer hover:opacity-90">`;
+            } else if (file.type === 'video') {
+                return `
+                    <div class="relative rounded-xl overflow-hidden mt-1 bg-black/20 cursor-pointer" onclick="openLightboxMedia('${file.data}', 'video', '${file.name}')">
+                        <video src="${file.data}" class="max-h-48 w-full object-cover"></video>
+                        <div class="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <i class="fa-solid fa-circle-play text-white text-2xl"></i>
+                        </div>
+                    </div>
+                `;
+            }
+            return '';
+        }
+
+        function scrollChatToBottom() {
+            const container = document.getElementById('chatMessagesContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearChatHistory() {
+            const tx = db.transaction(['chats'], 'readwrite');
+            tx.objectStore('chats').clear();
+            tx.oncomplete = () => {
+                chatMessagesCache = [];
+                renderChatMessages();
+                showToast('Đã xóa lịch sử chat!');
+                updateStorageMetrics();
+            };
+        }
+
+        function convertChatToNote(msgId) {
+            const msg = chatMessagesCache.find(m => m.id === msgId);
+            if (!msg) return;
+
+            const newNote = {
+                id: Date.now().toString(),
+                title: `Chat lưu (${msg.timestamp})`,
+                content: msg.text || 'Tệp đính kèm từ chat',
+                pinned: false,
+                media: msg.file ? [{
+                    id: Date.now().toString(),
+                    name: msg.file.name,
+                    type: msg.file.type,
+                    data: msg.file.data
+                }] : [],
+                updatedAt: new Date().toISOString()
+            };
+
+            const tx = db.transaction(['notes'], 'readwrite');
+            tx.objectStore('notes').put(newNote);
+            tx.oncomplete = () => {
+                loadNotesFromDB();
+                showToast('Đã lưu tin nhắn thành Ghi chú!');
+            };
+        }
+
+        // --- LIGHTBOX MEDIA VIEWER ---
+        function openLightboxMedia(src, type, name = 'Media') {
+            const img = document.getElementById('lightboxImage');
+            const video = document.getElementById('lightboxVideo');
+            document.getElementById('lightboxFileName').textContent = name;
+            lbRotation = 0;
+
+            if (type === 'image') {
+                img.src = src;
+                img.style.transform = `rotate(0deg)`;
+                img.classList.remove('hidden');
+                video.classList.add('hidden');
+            } else {
+                video.src = src;
+                video.classList.remove('hidden');
+                img.classList.add('hidden');
+            }
+
+            document.getElementById('lightboxModal').classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightboxModal').classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('lightboxVideo').pause();
+        }
+
+        function closeLightboxOnBackdrop(e) {
+            if (e.target.id === 'lightboxViewport' || e.target.id === 'lightboxModal') closeLightbox();
+        }
+
+        function rotateLightboxImage() {
+            lbRotation = (lbRotation + 90) % 360;
+            document.getElementById('lightboxImage').style.transform = `rotate(${lbRotation}deg)`;
+        }
+
+        // --- GENERAL UTILITIES ---
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            document.getElementById('themeIcon').className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            document.getElementById('toast-icon').className = isError 
+                ? 'fa-solid fa-circle-exclamation text-rose-400' 
+                : 'fa-solid fa-circle-check text-emerald-400';
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+
+        function copyToClipboard(text) {
+            if (!text) return;
+            const input = document.createElement('textarea');
+            input.value = text;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            showToast('Đã sao chép vào bộ nhớ tạm!');
+        }
+
+        function escapeHtml(str) {
+            return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+        }
+
+        // Handle window resize for mobile master-detail pane restoration
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                document.body.classList.remove('mobile-pane-detail-active');
+            }
+        });
+    </script>
+</body>
+</html>
